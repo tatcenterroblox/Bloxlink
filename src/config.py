@@ -44,3 +44,5 @@ RESTRICTIONS_TRELLO = "" # Your Trello board link to load restrictions.
 						 	# card name: label:id
 							# card desc: restriction text
 							# The label has no effect on restrictions. It's for visual purposes only.
+
+MONGO_CONNECTION_STRING = "" # MongoDB connection string

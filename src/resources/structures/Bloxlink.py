@@ -1,7 +1,7 @@
 from importlib import import_module
 from os import environ as env
 from discord import AutoShardedClient, AllowedMentions, Intents
-from config import WEBHOOKS # pylint: disable=E0611
+from config import WEBHOOKS, MONGO_CONNECTION_STRING # pylint: disable=E0611
 from ..constants import SHARD_RANGE, CLUSTER_ID, SHARD_COUNT, IS_DOCKER, TABLE_STRUCTURE, RELEASE, SELF_HOST # pylint: disable=import-error
 from ..secrets import REDIS_PASSWORD, REDIS_PORT, REDIS_HOST, RETHINKDB_HOST, RETHINKDB_DB, RETHINKDB_PASSWORD, RETHINKDB_PORT # pylint: disable=import-error
 from . import Permissions # pylint: disable=import-error
@@ -11,6 +11,7 @@ import traceback
 import datetime
 import logging
 import aiohttp
+import motor.motor_asyncio
 import aredis
 #import sentry_sdk
 import asyncio; loop = asyncio.get_event_loop()
@@ -263,7 +264,7 @@ class BloxlinkStructure(AutoShardedClient):
         if self.conn:
             return self.conn
 
-        async def connect(host, password, db, port):
+        async def connect_rethinkdb(host, password, db, port):
             try:
                 conn = await r.connect(
                     host=host,
@@ -289,7 +290,7 @@ class BloxlinkStructure(AutoShardedClient):
             for host in [RETHINKDB_HOST, "rethinkdb", "localhost"]:
                 try:
                     async with timeout(5):
-                        conn = await connect(host, RETHINKDB_PASSWORD, RETHINKDB_DB, RETHINKDB_PORT)
+                        conn = await connect_rethinkdb(host, RETHINKDB_PASSWORD, RETHINKDB_DB, RETHINKDB_PORT)
 
                         if conn:
                             # check for missing databases/tables
@@ -374,6 +375,7 @@ redis, redis_cache = load_redis()
 class Module:
     client = Bloxlink
     r = r
+    db = motor.motor_asyncio.AsyncIOMotorClient(MONGO_CONNECTION_STRING)["bloxlink"]
     session = aiohttp.ClientSession(loop=loop, timeout=aiohttp.ClientTimeout(total=20))
     loop = loop
     redis = redis
