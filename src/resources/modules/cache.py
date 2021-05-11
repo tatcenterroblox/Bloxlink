@@ -20,7 +20,7 @@ class Cache(Bloxlink.Module):
 
 
     async def set(self, k, v, expire=CACHE_CLEAR*60, check_primitives=True):
-        if check_primitives and self.cache and isinstance(v, (str, int, bool)):
+        if check_primitives and self.cache and isinstance(v, (str, int, bool, list)):
             await self.cache.set(k, v, expire_time=expire)
         else:
             self._cache[k] = v
@@ -56,7 +56,7 @@ class Cache(Bloxlink.Module):
         guild_data = await self.get(f"guild_data:{guild.id}")
 
         if guild_data is None:
-            guild_data = await self.r.table("guilds").get(str(guild.id)).run() or {"id": str(guild.id)}
+            guild_data = await self.db.guilds.find_one({"_id": str(guild.id)}) or {"_id": str(guild.id)}
 
             trello_board = await self.get_board(guild=guild, guild_data=guild_data)
             trello_options = {}
@@ -83,7 +83,7 @@ class Cache(Bloxlink.Module):
 
             item = guild_data.get(item_name, item_default)
 
-            await self.set_guild_value(guild, item_name, item)
+            await self.set_guild_value(guild, item_name=item, skip_db=True)
 
             item_values[item_name] = item
 
@@ -99,12 +99,65 @@ class Cache(Bloxlink.Module):
                 return item_values
 
 
-    async def set_guild_value(self, guild, item_name, value, guild_data=None):
+    async def set_guild_value(self, guild, guild_data=None, skip_db=False, **items):
+        insertion = {}
+        unset     = {}
+
         if guild_data:
             await self.set(f"guild_data:{guild.id}", guild_data, check_primitives=False)
 
-        await self.set(f"guild_data:{guild.id}:{item_name}", value, check_primitives=False)
+        for k,v in items.items():
+            if k not in ("_id", "updatedAt"):
+                if v is None:
+                    unset[k] = ""
+                else:
+                    insertion[k] = v
 
+            await self.set(f"guild_data:{guild.id}:{k}", v, check_primitives=False)
+
+        if not skip_db:
+            mongo_data = {
+                "$set": insertion,
+                "$currentDate": {
+                    "updatedAt": True
+                }
+            }
+
+            if unset:
+                mongo_data["$unset"] = unset
+
+            await self.db.guilds.update_one({"_id": str(guild.id)}, mongo_data, upsert=True)
+
+    async def set_user_value(self, user, user_data=None, **items):
+        insertion = {}
+        unset     = {}
+
+        if user_data:
+            await self.set(f"user_data:{user.id}", user_data, check_primitives=False)
+
+        for k,v in items.items():
+            if k not in ("_id", "updatedAt"):
+                if v is None:
+                    unset[k] = ""
+                else:
+                    insertion[k] = v
+
+            await self.set(f"user_data:{user.id}:{k}", v, check_primitives=False)
+
+        mongo_data = {
+            "$set": insertion,
+            "$currentDate": {
+                "updatedAt": True
+            }
+        }
+
+        if unset:
+            mongo_data["$unset"] = unset
+
+        await self.db.users.update_one({"_id": str(user.id)}, mongo_data, upsert=True)
 
     async def clear_guild_data(self, guild):
         await self.pop(f"guild_data:{guild.id}", primitives=False)
+
+    async def clear_user_data(self, user):
+        await self.pop(f"user_data:{user.id}", primitives=False)
