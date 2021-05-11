@@ -117,12 +117,13 @@ class Cache(Bloxlink.Module):
 
         if not skip_db:
             mongo_data = {
-                "$set": insertion,
                 "$currentDate": {
                     "updatedAt": True
                 }
             }
 
+            if insertion:
+                mongo_data["$set"] = insertion
             if unset:
                 mongo_data["$unset"] = unset
 
@@ -145,12 +146,13 @@ class Cache(Bloxlink.Module):
             await self.set(f"user_data:{user.id}:{k}", v, check_primitives=False)
 
         mongo_data = {
-            "$set": insertion,
             "$currentDate": {
                 "updatedAt": True
             }
         }
 
+        if insertion:
+            mongo_data["$set"] = insertion
         if unset:
             mongo_data["$unset"] = unset
 
