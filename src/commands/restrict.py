@@ -172,10 +172,7 @@ class RestrictCommand(Bloxlink.Module):
                 for roblox_account in parsed_accounts.values():
                     restrictions["robloxAccounts"][roblox_account.id] = {"name": roblox_account.username, "addedBy": str(author.id), "reason": reason}
 
-        guild_data["restrictions"] = restrictions
-        await set_guild_value(guild, "restrictions", restrictions)
-
-        await self.r.table("guilds").insert(guild_data, conflict="update").run()
+        await set_guild_value(guild, restrictions=restrictions)
 
         await response.success(f"Successfully **added** {resolvable[1]} **{resolvable[4]}** to your restrictions.")
 
@@ -223,10 +220,8 @@ class RestrictCommand(Bloxlink.Module):
             if not restrictions[resolvable[0]]:
                 restrictions.pop(resolvable[0], None)
 
-            guild_data["restrictions"] = restrictions
-            await set_guild_value(guild, "restrictions", restrictions)
 
-            await self.r.table("guilds").insert(guild_data, conflict="replace").run()
+            await set_guild_value(guild, restrictions=restrictions)
 
             await response.success(f"Successfully **removed** this **{resolvable[1]}** from your restrictions.")
 

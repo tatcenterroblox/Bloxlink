@@ -48,10 +48,7 @@ class PrefixCommand(Bloxlink.Module):
             else:
                 prefix_name = "prefix"
 
-            await self.r.table("guilds").insert({
-                "id": str(guild.id),
-                prefix_name: new_prefix
-            }, conflict="update").run()
+            await set_guild_value(guild, **{prefix_name:new_prefix})
 
             trello_board = CommandArgs.trello_board
 
@@ -73,8 +70,6 @@ class PrefixCommand(Bloxlink.Module):
                         await trello_board.sync(card_limit=TRELLO["CARD_LIMIT"], list_limit=TRELLO["LIST_LIMIT"])
 
             await post_event(guild, guild_data, "configuration", f"{author.mention} ({author.id}) has **changed** the `prefix` option.", BROWN_COLOR)
-
-            await set_guild_value(guild, prefix_name, new_prefix)
 
             await response.success("Your prefix was successfully changed!")
 

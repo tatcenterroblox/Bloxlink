@@ -5,6 +5,9 @@ from discord.errors import Forbidden
 from discord import Embed, PermissionOverwrite, AllowedMentions
 
 
+get_db_value, set_db_value = Bloxlink.get_module("cache", attrs=["get_db_value", "set_db_value"])
+
+
 class CourtSetupCommand(Bloxlink.Module):
     """set-up your judicial system"""
 
@@ -72,8 +75,7 @@ class CourtSetupCommand(Bloxlink.Module):
         groups          = setup_args["groups"]
         archive_category = setup_args["archive_category"]
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
 
         category = None
         create_category = False
@@ -112,7 +114,7 @@ class CourtSetupCommand(Bloxlink.Module):
             except Forbidden:
                 raise Error("I need both the `Manage Channels` and `Manage Roles` permissions.")
 
-        addon_data["court"] = {
+        court_data = {
             "judgeRoles": [str(x.id) for x in judge_roles],
             "logChannel": str(log_channel.id) if log_channel != "skip" else None,
             "archiveCategory": str(archive_category.id) if archive_category != "skip" else None,
@@ -120,11 +122,7 @@ class CourtSetupCommand(Bloxlink.Module):
             "groups": groups
         }
 
-        await self.r.table("addonData").insert({
-            "id": str(guild.id),
-            **addon_data
-        }, conflict="update").run()
-
+        await set_db_value("addonData", guild, court=court_data)
 
         embed = Embed(title="Additional Information", description=f"- Use `{prefix}case create` to make a new case chat.\n"
                                                                   "- Need to change your groups? You will need to run this command again.\n"

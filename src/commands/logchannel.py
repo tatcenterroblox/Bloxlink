@@ -106,15 +106,7 @@ class LogChannelCommand(Bloxlink.Module):
             log_channels[log_type] = str(log_channel.id)
             action = "saved"
 
-        if not log_channels:
-            guild_data.pop("logChannels", None)
-        else:
-            guild_data["logChannels"] = log_channels
-
-
-        await self.r.table("guilds").insert(guild_data, conflict="replace").run()
-
-        await set_guild_value(guild, "logChannels", log_channels)
+        await set_guild_value(guild, logChannels=log_channels if log_channels else None)
 
         await post_event(guild, guild_data, "configuration", f"{author.mention} ({author.id}) has **changed** the `log channels`.", BROWN_COLOR)
 

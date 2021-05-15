@@ -6,6 +6,9 @@ from discord.utils import find
 from discord.errors import Forbidden, NotFound
 
 
+get_db_value, set_db_value = Bloxlink.get_module("cache", attrs=["get_db_value", "set_db_value"])
+
+
 class CaseCommand(Bloxlink.Module):
     """manage your cases"""
 
@@ -40,8 +43,7 @@ class CaseCommand(Bloxlink.Module):
         prefix   = CommandArgs.prefix
         response = CommandArgs.response
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
 
         my_permissions = guild.me.guild_permissions
 
@@ -113,9 +115,7 @@ class CaseCommand(Bloxlink.Module):
                 "groupMembers": {},
             }
 
-            addon_data["court"] = court_data
-
-            await self.r.table("addonData").insert(addon_data, conflict="update").run()
+            await set_db_value("addonData", guild, court=court_data)
 
             await response.send(f"Welcome to the case of **{case_name}** which is being presided over by {author.mention}.", channel_override=case_channel)
 
@@ -150,8 +150,7 @@ class CaseCommand(Bloxlink.Module):
         channel = CommandArgs.message.channel
         author  = CommandArgs.message.author
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
         groups     = court_data.get("groups") or []
 
         current_case = court_data.get("cases", {}).get(str(channel.id))
@@ -190,9 +189,8 @@ class CaseCommand(Bloxlink.Module):
         current_case["groupMembers"][group] = list(set(current_case["groupMembers"][group] + group_members_ids))
 
         court_data["cases"][str(channel.id)] = current_case
-        addon_data["court"] = court_data
 
-        await self.r.table("addonData").insert(addon_data, conflict="replace").run()
+        await set_db_value("addonData", guild, court=court_data)
 
         try:
             for group_member in group_members:
@@ -216,8 +214,7 @@ class CaseCommand(Bloxlink.Module):
         channel = CommandArgs.message.channel
         author  = CommandArgs.message.author
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
         groups     = court_data.get("groups") or []
 
         current_case = court_data.get("cases", {}).get(str(channel.id)) or {}
@@ -256,9 +253,8 @@ class CaseCommand(Bloxlink.Module):
         current_case["groupMembers"][group] = list(set(current_case["groupMembers"][group]).difference(group_members_ids))
 
         court_data["cases"][str(channel.id)] = current_case
-        addon_data["court"] = court_data
 
-        await self.r.table("addonData").insert(addon_data, conflict="replace").run()
+        await set_db_value("addonData", guild, court=court_data)
 
         try:
             for group_member in group_members:
@@ -282,8 +278,7 @@ class CaseCommand(Bloxlink.Module):
         channel = CommandArgs.message.channel
         author  = CommandArgs.message.author
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
         cases = court_data.get("cases") or {}
 
         archive_category = court_data.get("archiveCategory")
@@ -325,9 +320,8 @@ class CaseCommand(Bloxlink.Module):
 
         cases.pop(str(channel.id), None)
         court_data["cases"] = cases
-        addon_data["court"] = court_data
 
-        await self.r.table("addonData").insert(addon_data, conflict="replace").run()
+        await set_db_value("addonData", guild, court=court_data)
 
         log_channel_id = court_data.get("logChannel")
 
@@ -354,8 +348,7 @@ class CaseCommand(Bloxlink.Module):
 
         guild   = CommandArgs.message.guild
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
         cases = court_data.get("cases") or {}
 
 
@@ -403,8 +396,7 @@ class CaseCommand(Bloxlink.Module):
         prefix   = CommandArgs.prefix
         response = CommandArgs.response
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
         cases = court_data.get("cases") or {}
 
         removed = 0
@@ -435,9 +427,15 @@ class CaseCommand(Bloxlink.Module):
                 removed += 1
 
         court_data["cases"] = cases
-        addon_data["court"] = court_data
 
-        await self.r.table("addonData").insert(addon_data, conflict="replace").run()
+        await self.db.addonData.update_one({"_id": str(guild.id)}, {
+            "$set": {
+                "court": court_data
+            },
+            "$currentDate": {
+                "updatedAt": True
+            },
+        }, upsert=True)
 
         if removed:
             await response.success(f"Successfully removed **{removed}** old case(s) from the database.")
@@ -456,8 +454,7 @@ class CaseCommand(Bloxlink.Module):
         channel = CommandArgs.message.channel
         author  = CommandArgs.message.author
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
         groups     = court_data.get("groups") or []
 
         current_case = court_data.get("cases", {}).get(str(channel.id))
@@ -511,8 +508,7 @@ class CaseCommand(Bloxlink.Module):
         channel = CommandArgs.message.channel
         author  = CommandArgs.message.author
 
-        addon_data = await self.r.table("addonData").get(str(guild.id)).run() or {"id": str(guild.id)}
-        court_data = addon_data.get("court") or {}
+        court_data = await get_db_value("addonData", guild, "court") or {}
         groups     = court_data.get("groups") or []
 
         current_case = court_data.get("cases", {}).get(str(channel.id))

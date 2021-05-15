@@ -8,7 +8,7 @@ from aiotrello.exceptions import TrelloNotFound, TrelloUnauthorized, TrelloBadRe
 verify_as, get_user, get_nickname, get_roblox_id, parse_accounts, unverify_member, format_update_embed, guild_obligations = Bloxlink.get_module("roblox", attrs=["verify_as", "get_user", "get_nickname", "get_roblox_id", "parse_accounts", "unverify_member", "format_update_embed", "guild_obligations"])
 get_options = Bloxlink.get_module("trello", attrs="get_options")
 post_event = Bloxlink.get_module("utils", attrs=["post_event"])
-
+set_guild_value = Bloxlink.get_module("cache", attrs=["set_guild_value"])
 
 
 class VerifyCommand(Bloxlink.Module):
@@ -94,7 +94,7 @@ class VerifyCommand(Bloxlink.Module):
 
             await post_event(guild, guild_data, "verification", f"{author.mention} ({author.id}) has **verified** as `{roblox_user.username}`.", GREEN_COLOR)
 
-            await response.send(content=welcome_message, embed=embed)
+            await response.send(content=welcome_message, embed=embed, mention_author=True)
 
 
     @Bloxlink.subcommand()
@@ -102,14 +102,13 @@ class VerifyCommand(Bloxlink.Module):
         """link a new account to Bloxlink"""
 
         author = CommandArgs.author
+        guild  = CommandArgs.guild
 
-        if CommandArgs.guild:
+        if guild:
             guild_data = CommandArgs.guild_data
 
             if not guild_data.get("hasBot"):
-                guild_data["hasBot"] = True
-
-                await self.r.table("guilds").insert(guild_data, conflict="update").run()
+                await set_guild_value(guild, hasBot=True)
 
             response_text = f"{author.mention}, to verify with Bloxlink, please visit our website at " \
                             f"<{VERIFY_URL}>. It won't take long!\nStuck? See this video: <https://www.youtube.com/watch?v=hq496NmQ9GU>"
@@ -117,7 +116,7 @@ class VerifyCommand(Bloxlink.Module):
             response_text = "To verify with Bloxlink, please visit our website at " \
                             f"<{VERIFY_URL}>. It won't take long!\nStuck? See this video: <https://www.youtube.com/watch?v=hq496NmQ9GU>"
 
-        await CommandArgs.response.send(response_text)
+        await CommandArgs.response.send(response_text, mention_author=True)
 
 
     @Bloxlink.subcommand(permissions=Bloxlink.Permissions().build("BLOXLINK_MANAGER"))
@@ -184,10 +183,7 @@ class VerifyCommand(Bloxlink.Module):
                 except (TrelloNotFound, TrelloBadRequest):
                     pass
 
-            await self.r.table("guilds").insert({
-                "id": str(guild.id),
-                "welcomeMessage": welcome_message
-            }, conflict="update").run()
+            await set_guild_value(guild, welcomeMessage=welcome_message)
 
         await post_event(guild, guild_data, "configuration", f"{author.mention} ({author.id}) has **changed** the `{choice}`.", BROWN_COLOR)
 
@@ -246,6 +242,6 @@ class VerifyCommand(Bloxlink.Module):
         """unlink an account from Bloxlink"""
 
         if CommandArgs.guild:
-            await CommandArgs.response.reply(f"to manage your accounts, please visit our website: <{ACCOUNT_SETTINGS_URL}>")
+            await CommandArgs.response.reply(f"to manage your accounts, please visit our website: <{ACCOUNT_SETTINGS_URL}>", mention_author=True)
         else:
-            await CommandArgs.response.send(f"To manage your accounts, please visit our website: <{ACCOUNT_SETTINGS_URL}>")
+            await CommandArgs.response.send(f"To manage your accounts, please visit our website: <{ACCOUNT_SETTINGS_URL}>", mention_author=True)

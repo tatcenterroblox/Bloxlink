@@ -144,14 +144,9 @@ class GroupLockCommand(Bloxlink.Module):
 
             groups[group.group_id] = {"groupName": group.name, "dmMessage": dm_message, "roleSets": parsed_rolesets}
 
-            await self.r.table("guilds").insert({
-                "id": str(guild.id),
-                "groupLock": groups
-            }, conflict="update").run()
+            await set_guild_value(guild, groupLock=groups)
 
             await post_event(guild, guild_data, "configuration", f"{author.mention} ({author.id}) has **added** a group to the `server-lock`.", BROWN_COLOR)
-
-            await set_guild_value(guild, "groupLock", groups)
 
             await response.success(f"Successfully added group **{group.name}** to your Server-Lock!")
 
@@ -168,21 +163,12 @@ class GroupLockCommand(Bloxlink.Module):
                 raise Message("This group isn't in your server-lock!")
 
             del groups[group.group_id]
-            guild_data["groupLock"] = groups
 
-            if groups:
-                await self.r.table("guilds").insert(guild_data, conflict="replace").run()
-            else:
-                guild_data.pop("groupLock")
-
-                await self.r.table("guilds").insert(guild_data, conflict="replace").run()
+            await set_guild_value(guild, groupLock=groups if groups else None)
 
             await post_event(guild, guild_data, "configuration", f"{author.mention} ({author.id}) has **deleted** a group from the `server-lock`.", BROWN_COLOR)
 
-            await set_guild_value(guild, "groupLock", groups)
-
             await response.success("Successfully **deleted** your group from the Server-Lock!")
-
 
         elif choice == "view":
             if not groups:

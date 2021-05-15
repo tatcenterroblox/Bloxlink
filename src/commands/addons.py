@@ -3,7 +3,7 @@ from resources.exceptions import Error # pylint: disable=import-error
 from discord import Embed, Object
 
 
-set_guild_value = Bloxlink.get_module("cache", attrs="set_guild_value")
+set_guild_value, get_guild_value = Bloxlink.get_module("cache", attrs=["set_guild_value", "get_guild_value"])
 get_features = Bloxlink.get_module("premium", attrs="get_features")
 addons, get_enabled_addons = Bloxlink.get_module("addonsm", attrs=["addons", "get_enabled_addons"])
 
@@ -73,8 +73,7 @@ class AddonsCommand(Bloxlink.Module):
         prefix   = CommandArgs.prefix
 
         guild = CommandArgs.guild
-        guild_data = CommandArgs.guild_data
-        guild_addons = guild_data.get("addons", {})
+        guild_addons = await get_guild_value(guild, "addons") or {}
 
         toggleable_addons = [str(x) for x in filter(lambda x: getattr(x, 'toggleable', True), addons.values())]
 
@@ -112,8 +111,5 @@ class AddonsCommand(Bloxlink.Module):
                                    f"commands have been removed from your `{prefix}help` menu.")
 
         guild_addons[addon_choice] = enable
-        guild_data["addons"] = guild_addons
 
-        await self.r.table("guilds").insert(guild_data, conflict="update").run()
-
-        await set_guild_value(guild, "addons", guild_addons)
+        await set_guild_value(guild, addons=guild_addons)

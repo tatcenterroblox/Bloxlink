@@ -8,7 +8,7 @@ from time import time
 from math import ceil
 
 is_patron = Bloxlink.get_module("patreon", attrs="is_patron")
-cache_set, cache_get, cache_pop = Bloxlink.get_module("cache", attrs=["set", "get", "pop"])
+cache_set, cache_get, cache_pop, set_user_value = Bloxlink.get_module("cache", attrs=["set", "get", "pop", "set_user_value"])
 
 @Bloxlink.module
 class Premium(Bloxlink.Module):
@@ -89,10 +89,7 @@ class Premium(Bloxlink.Module):
                 user_data_premium["expiry"] = 1
                 user_data_premium["pro"] = 1
 
-        user_data["premium"] = user_data_premium
-
-        await self.r.db("bloxlink").table("users").insert(user_data, conflict="update").run()
-
+        await set_user_value(user, premium=user_data_premium)
         await cache_pop(f"premium_cache:{user.id}")
 
         if guild:
@@ -148,8 +145,8 @@ class Premium(Bloxlink.Module):
         if apply_cooldown:
             transfer_from_data["premium"]["transferCooldown"] = time() + (86400*TRANSFER_COOLDOWN)
 
-        await self.r.db("bloxlink").table("users").insert(transfer_from_data, conflict="update").run()
-        await self.r.db("bloxlink").table("users").insert(transfer_to_data,   conflict="update").run()
+        await set_user_value(transfer_from, premium=transfer_from_data["premium"])
+        await set_user_value(transfer_to, premium=transfer_to_data["premium"])
 
         await cache_pop(f"premium_cache:{transfer_to.id}")
         await cache_pop(f"premium_cache:{transfer_from.id}")
@@ -208,11 +205,8 @@ class Premium(Bloxlink.Module):
                     transferee_data["transferFrom"] = None
                     transferee_data["transferCooldown"] = None
 
-                    author_data["premium"] = premium_data
-                    transferee_data["premium"] = transferee_data
-
-                    await self.r.db("bloxlink").table("users").insert(author_data, conflict="update").run()
-                    await self.r.db("bloxlink").table("users").insert(transferee_data, conflict="update").run()
+                    await set_user_value(author, premium=premium_data)
+                    await set_user_value(Object(id=transfer_from), premium=transferee_data)
 
         """
         if author_data.get("flags", {}).get("premiumAnywhere"):

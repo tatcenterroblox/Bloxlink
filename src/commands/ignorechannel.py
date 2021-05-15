@@ -30,12 +30,7 @@ class IgnoreChannelCommand(Bloxlink.Module):
 
         disabled = bool(ignored_channels[channel_id])
 
-        await self.r.table("guilds").insert({
-            "id": str(guild.id),
-            "ignoredChannels": ignored_channels
-        }, conflict="update").run()
-
-        await set_guild_value(guild, "ignoredChannels", ignored_channels)
+        await set_guild_value(guild, ignoredChannels=ignored_channels)
 
         if disabled:
             await response.success("Successfully **disabled** commands from this channel for non-admins.\n"

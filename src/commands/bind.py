@@ -14,7 +14,7 @@ roblox_group_regex = re.compile(r"roblox.com/groups/(\d+)/")
 get_group, parse_trello_binds, count_binds, get_binds = Bloxlink.get_module("roblox", attrs=["get_group", "parse_trello_binds", "count_binds", "get_binds"])
 fetch, post_event = Bloxlink.get_module("utils", attrs=["fetch", "post_event"])
 get_features = Bloxlink.get_module("premium", attrs=["get_features"])
-clear_guild_data = Bloxlink.get_module("cache", attrs=["clear_guild_data"])
+clear_guild_data, set_guild_value = Bloxlink.get_module("cache", attrs=["clear_guild_data", "set_guild_value"])
 
 API_URL = "https://api.roblox.com"
 FREE_BIND_COUNT, PREM_BIND_COUNT = LIMITS["BINDS"]["FREE"], LIMITS["BINDS"]["PREMIUM"]
@@ -191,9 +191,8 @@ class BindCommand(Bloxlink.Module):
                 if found_group:
                     if (nickname and found_group["nickname"] != nickname) or (sorted(remove_roles) != sorted(found_group.get("removeRoles", []))):
                         group_ids[group_id] = {"nickname": nickname, "groupName": group.name, "removeRoles": remove_roles}
-                        guild_data["groupIDs"] = group_ids
 
-                        await self.r.table("guilds").insert(guild_data, conflict="update").run()
+                        await set_guild_value(guild, groupIDs=group_ids)
 
                         trello_group_bind = trello_card_binds["groups"]["entire group"].get(group_id)
 
@@ -237,8 +236,6 @@ class BindCommand(Bloxlink.Module):
 
                         await post_event(guild, guild_data, "bind", f"{author.mention} ({author.id}) has **changed** `{group.name}`{ending_s} nickname template.", BLURPLE_COLOR)
 
-                        await clear_guild_data(guild)
-
                         raise Message("Since your group is already linked, the nickname was updated.", type="success")
 
                     else:
@@ -255,9 +252,8 @@ class BindCommand(Bloxlink.Module):
 
                 # add group to guild_data.groupIDs
                 group_ids[group_id] = {"nickname": nickname not in ("skip", "next") and nickname, "groupName": group.name, "removeRoles": remove_roles}
-                guild_data["groupIDs"] = group_ids
 
-                await self.r.table("guilds").insert(guild_data, conflict="update").run()
+                await set_guild_value(guild, groupIDs=group_ids)
 
                 if trello_binds_list:
                     card_bind_data = [
@@ -591,11 +587,7 @@ class BindCommand(Bloxlink.Module):
 
                                 trello_binds_list.parsed_bind_data = None
 
-
-            await self.r.table("guilds").insert({
-                "id": str(guild.id),
-                "roleBinds": role_binds
-            }, conflict="update").run()
+            await set_guild_value(guild, roleBinds=role_binds)
 
             text = ["Successfully **bound** rank ID(s): `"]
             if new_ranks["binds"]:
@@ -614,8 +606,6 @@ class BindCommand(Bloxlink.Module):
             text = "".join(text)
 
             await post_event(guild, guild_data, "bind", f"{author.mention} ({author.id}) has **bound** group `{group.name}`.", BLURPLE_COLOR)
-
-            await clear_guild_data(guild)
 
             await response.success(text)
 
@@ -770,14 +760,8 @@ class BindCommand(Bloxlink.Module):
 
                     trello_binds_list.parsed_bind_data = None
 
-            await self.r.table("guilds").insert({
-                "id": str(guild.id),
-                "roleBinds": role_binds
-            }, conflict="update").run()
-
+            await set_guild_value(guild, roleBinds=role_binds)
 
             await post_event(guild, guild_data, "bind", f"{author.mention} ({author.id}) has **bound** {bind_choice_title} `{display_name}`.", BLURPLE_COLOR)
-
-            await clear_guild_data(guild)
 
             await response.success(f"Successfully **bound** {bind_choice_title} `{display_name}` ({bind_id}) with Discord role(s) **{', '.join([r.name for r in discord_roles])}!**")

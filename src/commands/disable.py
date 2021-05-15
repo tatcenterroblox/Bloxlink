@@ -78,10 +78,7 @@ class DisableCommand(Bloxlink.Module):
                 disabled_commands["global"].append(command_name)
                 enable = "disabled"
 
-        guild_data["disabledCommands"] = disabled_commands
-        await self.r.table("guilds").insert(guild_data, conflict="replace").run()
-
-        await set_guild_value(guild, "disabledCommands", disabled_commands)
+        await set_guild_value(guild, disabledCommands=disabled_commands)
 
         await response.success(f"Successfully **{enable}** command `{command_name}` {disable_where} for non-admins.\n"
                                 "If you would like to grant a certain person access to use this command, give them a role called `Bloxlink Bypass`.")

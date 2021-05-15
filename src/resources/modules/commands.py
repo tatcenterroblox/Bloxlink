@@ -229,7 +229,7 @@ class Commands(Bloxlink.Module):
                 fn = command.fn
 
             if guild:
-                guild_data = await self.r.table("guilds").get(guild_id).run() or {"id": guild_id}
+                guild_data = await self.db.guilds.find_one({"_id": guild_id}) or {"_id": guild_id}
                 trello_board = guild and await get_board(guild)
 
             real_prefix, _ = await get_prefix(guild, trello_board)
@@ -362,7 +362,7 @@ class Commands(Bloxlink.Module):
             """
 
             await response.error(locale("errors.commandError"))
-            Bloxlink.error(traceback.format_exc(), title=f"Error source: {command.name}.py")
+            Bloxlink.error(traceback.format_exc(), title=f"Error source: {command.name}.py\n{f'Guild ID: {guild.id}' if guild else ''}")
 
         finally:
             delete_messages = response.delete_message_queue
@@ -450,7 +450,7 @@ class Commands(Bloxlink.Module):
             if command_name:
                 for index, command in commands.items():
                     if index == command_name or command_name in command.aliases:
-                        guild_data = guild_data or (guild and (await self.r.table("guilds").get(guild_id).run() or {"id": guild_id})) or {}
+                        guild_data = guild_data or (guild and (await self.db.guilds.find_one({"_id": guild_id}) or {"id": guild_id})) or {}
 
                         fn = command.fn
                         subcommand_attrs = {}

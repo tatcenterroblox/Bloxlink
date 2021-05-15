@@ -8,6 +8,7 @@ get_features = Bloxlink.get_module("premium", attrs=["get_features"])
 get_board = Bloxlink.get_module("trello", attrs=["get_board"])
 post_stats = Bloxlink.get_module("site_services", name_override="DBL", attrs="post_stats")
 get_restriction = Bloxlink.get_module("blacklist", attrs=["get_restriction"])
+set_guild_value = Bloxlink.get_module("cache", attrs=["set_guild_value"])
 
 NOT_PREMIUM = "**Notice - Server Not Premium**\nPro can only be used on " \
               "servers with premium from Patreon.com. If you are indeed subscribed " \
@@ -60,8 +61,7 @@ class GuildJoinEvent(Bloxlink.Module):
             trello_board = await get_board(guild_data=guild_data, guild=guild)
             prefix, _ = await get_prefix(guild=guild, trello_board=trello_board)
 
-            guild_data["hasBot"] = True
-            await self.r.table("guilds").insert(guild_data, conflict="update").run()
+            await set_guild_value(guild, hasBot=True)
 
             if RELEASE == "PRO":
                 profile, _ = await get_features(Object(id=guild.owner_id), guild=guild, cache=False)

@@ -1,9 +1,6 @@
 from resources.structures.Bloxlink import Bloxlink # pylint: disable=import-error
 from resources.exceptions import Error, RobloxNotFound, UserNotVerified, CancelCommand # pylint: disable=import-error
-from resources.constants import ARROW, ORANGE_COLOR, PURPLE_COLOR # pylint: disable=import-error
-from discord import Embed, Object
-from discord.utils import find
-from discord.errors import Forbidden, NotFound
+from resources.constants import PURPLE_COLOR # pylint: disable=import-error
 from datetime import datetime
 import re
 
@@ -25,6 +22,7 @@ parse_message = Bloxlink.get_module("commands", attrs="parse_message")
 get_game, get_catalog_item, get_user = Bloxlink.get_module("roblox", attrs=["get_game", "get_catalog_item", "get_user"])
 get_inactive_role, handle_inactive_role, get_profile = Bloxlink.get_module("roblox", name_override="RobloxProfile", attrs=["get_inactive_role", "handle_inactive_role", "get_profile"])
 post_event = Bloxlink.get_module("utils", attrs=["post_event"])
+set_user_value, get_user_value = Bloxlink.get_module("cache", attrs=["set_user_value", "get_user_value"])
 
 
 @Bloxlink.command
@@ -154,10 +152,8 @@ class ProfileCommand(Bloxlink.Module):
         guild_data = CommandArgs.guild_data
 
         author = CommandArgs.author
-        author_id = str(author.id)
-        author_data = await self.r.db("bloxlink").table("users").get(author_id).run() or {"id": author_id}
 
-        profile_data = author_data.get("profileData") or {}
+        profile_data = await get_user_value(author, "profileData")
 
         change_what = (await CommandArgs.prompt([
             {
@@ -302,9 +298,6 @@ class ProfileCommand(Bloxlink.Module):
             else:
                 profile_data["acceptingTrades"] = accepting_trades == "yes"
 
-
-        author_data["profileData"] = profile_data
-
-        await self.r.db("bloxlink").table("users").insert(author_data, conflict="replace").run()
+        await set_user_value(author, profileData=profile_data)
 
         await response.success(f"Successfully saved your new **{change_what}** field.")

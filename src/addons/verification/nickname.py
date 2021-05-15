@@ -63,13 +63,9 @@ class NicknameCommand(Bloxlink.Module):
                 raise CancelledPrompt
 
         if global_nickname.lower() != "skip":
-            guild_data["nicknameTemplate"] = global_nickname
-
-            await self.r.table("guilds").insert(guild_data, conflict="update").run()
+            await set_guild_value(guild, nicknameTemplate=global_nickname)
 
             await post_event(guild, guild_data, "configuration", f"{author.mention} ({author.id}) has **changed** the `nicknameTemplate` option.", BROWN_COLOR)
-
-            await set_guild_value(guild, "nicknameTemplate", global_nickname)
 
             await response.success("Successfully saved your new **Global Nickname!**")
         else:
