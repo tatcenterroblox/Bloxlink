@@ -18,13 +18,11 @@ class Cache(Bloxlink.Module):
 
         return self._cache.get(k)
 
-
     async def set(self, k, v, expire=CACHE_CLEAR*60, check_primitives=True):
         if check_primitives and self.cache and isinstance(v, (str, int, bool, list)):
             await self.cache.set(k, v, expire_time=expire)
         else:
             self._cache[k] = v
-
 
     async def pop(self, k, primitives=False):
         if self.cache and primitives:
@@ -34,7 +32,6 @@ class Cache(Bloxlink.Module):
                 await self.cache.delete_pattern(f"{k}*")
         else:
             self._cache.pop(k, None)
-
 
     async def clear(self, *exceptions):
         if exceptions:
@@ -50,22 +47,9 @@ class Cache(Bloxlink.Module):
         else:
             self._cache = benedict(keypath_separator=":")
 
-
-    async def get_guild_value(self, guild, *items, return_guild_data=False):
+    async def get_db_value(self, typex, obj, *items):
         item_values = {}
-        guild_data = await self.get(f"guild_data:{guild.id}")
-
-        if guild_data is None:
-            guild_data = await self.db.guilds.find_one({"_id": str(guild.id)}) or {"_id": str(guild.id)}
-
-            trello_board = await self.get_board(guild=guild, guild_data=guild_data)
-            trello_options = {}
-
-            if trello_board:
-                trello_options, _ = await self.get_options(trello_board)
-                guild_data.update(trello_options)
-
-            await self.set(f"guild_data:{guild.id}", guild_data, check_primitives=False)
+        left_overs = {}
 
         for item_name in items:
             item_default = None
@@ -74,37 +58,34 @@ class Cache(Bloxlink.Module):
                 item_default = item_name[1]
                 item_name = item_name[0]
 
-            data = await self.get(f"guild_data:{guild.id}:{item_name}", primitives=False)
+            data = await self.get(f"{typex}_data:{obj.id}:{item_name}", primitives=False)
 
             if data is not None:
                 item_values[item_name] = data
+            else:
+                item_values[item_name] = item_default
+                left_overs[item_name] = 1
 
-                continue
 
-            item = guild_data.get(item_name, item_default)
+        if left_overs:
+            left_overs["_id"] = 0
+            mongo_data = await self.db[typex].find_one({"_id": str(obj.id)}, left_overs) or {}
 
-            await self.set_guild_value(guild, item_name=item, skip_db=True)
-
-            item_values[item_name] = item
+            for k, v in mongo_data.items():
+                await self.set(f"{typex}_data:{obj.id}:{k}", v, check_primitives=False)
+                item_values[k] = v if v is not None else "default"
 
         if len(items) == 1:
-            if return_guild_data:
-                return item_values[item_name], guild_data
-            else:
-                return item_values[item_name]
+            return item_values[item_name]
         else:
-            if return_guild_data:
-                return item_values, guild_data
-            else:
-                return item_values
+            return item_values
 
-
-    async def set_guild_value(self, guild, guild_data=None, skip_db=False, **items):
+    async def set_db_value(self, typex, obj, parent_value=None, skip_db=False, **items):
         insertion = {}
         unset     = {}
 
-        if guild_data:
-            await self.set(f"guild_data:{guild.id}", guild_data, check_primitives=False)
+        if parent_value:
+            await self.set(f"{typex}_data:{obj.id}", parent_value, check_primitives=False)
 
         for k,v in items.items():
             if k not in ("_id", "updatedAt"):
@@ -113,7 +94,7 @@ class Cache(Bloxlink.Module):
                 else:
                     insertion[k] = v
 
-            await self.set(f"guild_data:{guild.id}:{k}", v, check_primitives=False)
+            await self.set(f"{typex}_data:{obj.id}:{k}", v, check_primitives=False)
 
         if not skip_db:
             mongo_data = {
@@ -127,36 +108,20 @@ class Cache(Bloxlink.Module):
             if unset:
                 mongo_data["$unset"] = unset
 
-            await self.db.guilds.update_one({"_id": str(guild.id)}, mongo_data, upsert=True)
+            await self.db[typex].update_one({"_id": str(obj.id)}, mongo_data, upsert=True)
 
-    async def set_user_value(self, user, user_data=None, **items):
-        insertion = {}
-        unset     = {}
+    # convenience wrappers
+    async def get_guild_value(self, guild, *items):
+        return await self.get_db_value("guilds", guild, *items)
 
-        if user_data:
-            await self.set(f"user_data:{user.id}", user_data, check_primitives=False)
+    async def get_user_value(self, user, *items):
+        return await self.get_db_value("users", user, *items)
 
-        for k,v in items.items():
-            if k not in ("_id", "updatedAt"):
-                if v is None:
-                    unset[k] = ""
-                else:
-                    insertion[k] = v
+    async def set_guild_value(self, guild, guild_data=None, skip_db=False, **items):
+        return await self.set_db_value("guilds", guild, parent_value=guild_data, skip_db=skip_db, **items)
 
-            await self.set(f"user_data:{user.id}:{k}", v, check_primitives=False)
-
-        mongo_data = {
-            "$currentDate": {
-                "updatedAt": True
-            }
-        }
-
-        if insertion:
-            mongo_data["$set"] = insertion
-        if unset:
-            mongo_data["$unset"] = unset
-
-        await self.db.users.update_one({"_id": str(user.id)}, mongo_data, upsert=True)
+    async def set_user_value(self, user, user_data=None, skip_db=False, **items):
+        return await self.set_db_value("users", user, parent_value=user_data, skip_db=skip_db, **items)
 
     async def clear_guild_data(self, guild):
         await self.pop(f"guild_data:{guild.id}", primitives=False)
