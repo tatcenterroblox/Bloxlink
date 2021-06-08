@@ -439,7 +439,7 @@ class Roblox(Bloxlink.Module):
 
             if "smart-name" in template:
                 if roblox_user.display_name != roblox_user.username:
-                    smart_name = f"{roblox_user.display_name} ({roblox_user.username})"
+                    smart_name = f"{roblox_user.display_name} (@{roblox_user.username})"
 
                     if len(smart_name) > 32:
                         smart_name = roblox_user.username
@@ -2708,14 +2708,6 @@ class RobloxUser(Bloxlink.Module):
                     data = json.loads(data)
                 except json.decoder.JSONDecodeError:
                     raise RobloxAPIError
-
-                """
-                for badge in data.get("RobloxBadges", []):
-                    if "Builders Club" in badge["Name"]:
-                        premium = True
-                    else:
-                        badges.add(badge["Name"])
-                """
 
                 roblox_data["badges"] = badges
                 roblox_data["premium"] = premium
