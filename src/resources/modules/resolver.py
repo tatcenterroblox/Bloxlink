@@ -21,7 +21,12 @@ class Resolver(Bloxlink.Module):
         max = arg.get("max", 100)
 
         if message and message.role_mentions:
-            return message.role_mentions[0].name[:max], None
+            for role_mention in message.role_mentions:
+                for role_match in self.role_pattern.finditer(content):
+                    role_id = role_match.group(1)
+
+                    if str(role_mention.id) == role_id:
+                        content = content.replace(role_match.group(0), role_mention.name)
 
         if arg.get("min") or arg.get("max"):
             if min <= len(content) <= max:
@@ -45,7 +50,7 @@ class Resolver(Bloxlink.Module):
                 if min <= int_content <= max:
                     return int_content, None
                 else:
-                    return False, f'Number character count not in range: {min}-{max}'
+                    return False, f'Number character count not in range: [{min}-{max}]'
             else:
                 return int_content, None
 
@@ -78,10 +83,6 @@ class Resolver(Bloxlink.Module):
 
         if not arg.get("multiple"):
             if message:
-                for mention in message.mentions:
-                    if mention.id != self.client.user.id:
-                        return mention, None
-
                 if message.raw_mentions:
                     user_id = self.user_pattern.search(content)
 
@@ -90,11 +91,15 @@ class Resolver(Bloxlink.Module):
 
                         if user_id != self.client.user.id:
                             try:
-                                user = await self.client.fetch_user(user_id)
+                                if guild and arg.get("guild_members_only"):
+                                    user = guild.get_member(user_id) or await guild.fetch_member(user_id)
+                                else:
+                                    user = find(lambda u: u.id == user_id, message.mentions) or await self.client.fetch_user(user_id)
+
                                 return user, None
+
                             except NotFound:
                                 return False, "A user with this discord ID does not exist"
-
 
             is_int, is_id = None, None
 
@@ -111,7 +116,10 @@ class Resolver(Bloxlink.Module):
                     return user, None
                 else:
                     try:
-                        user = await self.client.fetch_user(int(is_int))
+                        if guild and arg.get("guild_members_only"):
+                            user = guild.get_member(int(is_int)) or await guild.fetch_member(int(is_int))
+                        else:
+                            user = await self.client.fetch_user(int(is_int))
 
                         return user, None
 
@@ -130,7 +138,7 @@ class Resolver(Bloxlink.Module):
 
             return False, "Invalid user"
         else:
-            users = []
+            users = set()
             max = arg.get("max")
             count = 0
 
@@ -139,15 +147,18 @@ class Resolver(Bloxlink.Module):
             if max:
                 lookup_strings = lookup_strings[:max]
 
-            if message:
-                for user in message.mentions:
+            if message and message.raw_mentions:
+                for user_search in self.user_pattern.finditer(content):
                     if max:
                         if count >= max:
                             break
                         else:
                             count += 1
 
-                    users.append(user)
+                    user = find(lambda u: u.id == int(user_search.group(1)), message.mentions)
+
+                    if user:
+                        users.add(user)
 
             for lookup_string in lookup_strings:
                 if lookup_string:
@@ -157,24 +168,27 @@ class Resolver(Bloxlink.Module):
 
                     if lookup_string.isdigit():
                         try:
-                            member = guild and await guild.fetch_member(int(lookup_string))
+                            if guild and arg.get("guild_members_only"):
+                                user = guild.get_member(int(lookup_string)) or await guild.fetch_member(int(lookup_string))
+                            else:
+                                user = await Bloxlink.fetch_user(int(lookup_string))
                         except NotFound:
                             pass
                         else:
-                            users.append(member)
+                            users.add(user)
 
                     else:
                         member = guild and await guild.query_members(lookup_string, limit=1)
 
                         if member:
-                            users.append(member[0])
+                            users.add(member[0])
 
                     count += 1
 
             if not users:
                 return None, "Invalid user(s)"
 
-            return users, None
+            return list(users), None
 
 
     async def channel_resolver(self, arg, message=None, guild=None, content=None):
@@ -368,4 +382,3 @@ class Resolver(Bloxlink.Module):
             if method_name.endswith("resolver") and name in method_name:
                 if callable(getattr(self, method_name)):
                     return getattr(self, method_name)
-

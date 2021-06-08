@@ -41,8 +41,8 @@ class RobloxSearchCommand(Bloxlink.Module):
         guild = CommandArgs.guild
         prefix = CommandArgs.prefix
 
-        if message and message.mentions:
-            message.content = f"{prefix}getinfo {message.mentions[0].id}"
+        if message and message.mentions and CommandArgs.string_args:
+            message.content = f"{prefix}getinfo {CommandArgs.string_args[0]}"
             return await parse_message(message)
 
         valid_flags = ["username", "id", "avatar", "premium", "badges", "groups", "description", "age", "banned", "devforum"]

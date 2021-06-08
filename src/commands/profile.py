@@ -1,5 +1,5 @@
 from resources.structures.Bloxlink import Bloxlink # pylint: disable=import-error
-from resources.exceptions import Error, RobloxNotFound, UserNotVerified, CancelCommand # pylint: disable=import-error
+from resources.exceptions import Error, RobloxNotFound, UserNotVerified # pylint: disable=import-error
 from resources.constants import PURPLE_COLOR # pylint: disable=import-error
 from datetime import datetime
 import re

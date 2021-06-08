@@ -12,7 +12,7 @@ import json
 count_binds = Bloxlink.get_module("roblox", attrs=["count_binds"])
 get_board, get_options = Bloxlink.get_module("trello", attrs=["get_board", "get_options"])
 get_prefix = Bloxlink.get_module("utils", attrs=["get_prefix"])
-cache_pop = Bloxlink.get_module("cache", attrs=["pop"])
+cache_pop, set_guild_value = Bloxlink.get_module("cache", attrs=["pop", "set_user_value"])
 
 INT_REACTIONS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣"]
 
@@ -147,7 +147,7 @@ class DataCommand(Bloxlink.Module):
                                                 role_map_find = role_map.get(role_id)
 
                                                 if not role_map_find:
-                                                    role = await guild.create_role(name=rank*6)
+                                                    role = await guild.create_role(name=rank)
                                                     role_map[role_id] = str(role.id)
                                                     role_map_find = str(role.id)
 
