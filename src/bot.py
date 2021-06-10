@@ -65,11 +65,11 @@ async def handle_signal(sig):
     Bloxlink.log(f"Handling signal {sig}")
 
     await Bloxlink.close_db()
-    await Bloxlink.logout()
+    await Bloxlink.close()
 
     loop.stop()
 
-    for task in asyncio.Task.all_tasks():
+    for task in asyncio.all_tasks():
         task.cancel()
 
     os._exit(0)
