@@ -164,8 +164,9 @@ class BloxlinkStructure(AutoShardedClient):
         #return load
 
     @staticmethod
-    def get_module(dir_name, *, name_override=None, path="resources.modules", attrs=None):
-        modules = loaded_modules.get(dir_name)
+    def get_module(dir_name, *, name_override=None, name_override_pattern="", path="resources.modules", attrs=None):
+        save_as  = f"{name_override_pattern.lower()}{(dir_name).lower()}"
+        modules = loaded_modules.get(save_as)
         name_obj = (name_override or dir_name).lower()
 
         class_obj = None
@@ -306,7 +307,7 @@ class BloxlinkStructure(AutoShardedClient):
 
     @staticmethod
     def command(*args, **kwargs):
-        return Bloxlink.get_module("commands", attrs="new_command")(*args, **kwargs)
+        return Bloxlink.get_module("commands", attrs="new_command", name_override_pattern="Command_")(*args, **kwargs)
 
     @staticmethod
     def subcommand(**kwargs):
