@@ -69,7 +69,7 @@ class Commands(Bloxlink.Module):
 
                         raise CancelCommand
 
-            if RELEASE == "PRO" and command.name not in ("donate", "transfer", "eval", "status", "prefix"):
+            if RELEASE == "PRO" and command.name not in ("donate", "transfer", "eval", "status", "prefix", "add-features"):
                 donator_profile, _ = await get_features(Object(id=guild.owner_id), guild=guild)
 
                 if not donator_profile.features.get("pro"):
@@ -629,7 +629,7 @@ class Commands(Bloxlink.Module):
 
 class Command:
     def __init__(self, command):
-        self.name = command.__class__.__name__.replace("Command", "").lower()
+        self.name = command.__class__.__name__[:-7].lower()
         self.subcommands = {}
         self.description = command.__doc__ or "N/A"
         self.dm_allowed = getattr(command, "dm_allowed", False)
