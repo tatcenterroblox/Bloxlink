@@ -2,7 +2,7 @@ from resources.constants import RELEASE, IS_DOCKER # pylint: disable=import-erro
 
 # More optional settings can be set, such as a Trello key/token. Look at the docker-compose.yml for additional values.
 
-PREFIX = "!"
+PREFIX = ":"
 
 WEBHOOKS = { # discord webhook links
 	"LOGS":  None,
